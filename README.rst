@@ -23,6 +23,8 @@ UTide
 
 Python re-implementation of the Matlab package UTide.
 
+Calculates astronomy seperately from the solve harmonic analysis, so the function solve_m
+is more efficient for multiple time series with the same time vector.
 Still in heavy development--everything is subject to change!
 
 Note: the user interface differs from the Matlab version, so
