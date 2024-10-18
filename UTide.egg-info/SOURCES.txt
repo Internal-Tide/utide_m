@@ -2,6 +2,7 @@
 .pre-commit-config.yaml
 LICENSE.txt
 MANIFEST.in
+PKG-INFO
 README.rst
 pyproject.toml
 requirements-dev.txt

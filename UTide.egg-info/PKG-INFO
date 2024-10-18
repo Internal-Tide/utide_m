@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: UTide
-Version: 0.3.0
+Version: 0.1.dev1+g9427e74.d20241018
 Summary: Python distribution of the MatLab package UTide
 Home-page: https://github.com/wesleybowman/UTide
 Author: Wesley Bowman
