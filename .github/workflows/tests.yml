@@ -1,0 +1,50 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [master, main]
+
+jobs:
+  run:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        python-version: [ "3.7", "3.8", "3.9", "3.10"]
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        # Oldest one based on NEP-29 and latest one.
+        # See https://numpy.org/neps/nep-0029-deprecation_policy.html
+        numpy-version: ["1.19", "1.22"]
+        exclude:
+          - python-version: "3.10"
+            numpy-version: "1.19"
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup
+      uses: mamba-org/provision-with-micromamba@main
+      with:
+        environment-file: false
+
+    - name: Python ${{ matrix.python-version }} numpy ${{ matrix.numpy-version }}
+      shell: bash -l {0}
+      run: |
+        micromamba create --name TEST python=${{ matrix.python-version }} --file requirements.txt --file requirements-dev.txt --channel conda-forge
+        micromamba activate TEST
+        micromamba install numpy=${{ matrix.numpy-version }}
+        pip install -e . --no-deps --force-reinstall
+
+    - name: Debug Info
+      shell: bash -l {0}
+      run: |
+        micromamba activate TEST
+        micromamba info --all
+        micromamba list
+
+    - name: Tests
+      shell: bash -l {0}
+      run: |
+        micromamba activate TEST
+        pytest -n 2 -rxs --cov=utide tests
