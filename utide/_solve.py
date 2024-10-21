@@ -5,7 +5,7 @@ import numpy as np
 
 from ._time_conversion import _normalize_time
 from .confidence import _confidence
-from .constituent_selection import ut_cnstitsel
+from .constituent_selection import ut_cnstitsel,ut_cnstitsel_m
 from .diagnostics import _PE, _SNR, ut_diagn
 from .ellipse_params import ut_cs2cep
 from .harmonics import ut_E,ut_E_m
@@ -517,19 +517,19 @@ def _slvinit(tin, uin, vin, lat, **opts):
     # but don't necessarily have masked values.
 
     # Are the times equally spaced?
-    eps = np.finfo(np.float64).eps
-    if np.var(np.unique(np.diff(tin))) < eps:
-        opt["equi"] = True  # based on times; u/v can still have nans ("gappy")
-        lor = np.ptp(tin)
-        ntgood = len(tin)
-        elor = lor * ntgood / (ntgood - 1)
-        tref = 0.5 * (tin[0] + tin[-1])
-    else:
-        opt["equi"] = False
-        lor = np.ptp(t)
-        nt = len(t)
-        elor = lor * nt / (nt - 1)
-        tref = 0.5 * (t[0] + t[-1])
+    # eps = np.finfo(np.float64).eps
+    # if np.var(np.unique(np.diff(tin))) < eps:
+    opt["equi"] = True  # based on times; u/v can still have nans ("gappy")
+    lor = np.ptp(tin)
+    ntgood = len(tin)
+    elor = lor * ntgood / (ntgood - 1)
+    tref = 0.5 * (tin[0] + tin[-1])
+    # else:
+    #     opt["equi"] = False
+    #     lor = np.ptp(t)
+    #     nt = len(t)
+    #     elor = lor * nt / (nt - 1)
+    #     tref = 0.5 * (t[0] + t[-1])
 
     # Options.
     opt["conf_int"] = True
@@ -573,12 +573,12 @@ def solve_m(t, u, v=None, lat=None, fuv_cache=None,**opts):
 
     compat_opts = _process_opts(opts, v is not None)
 
-    coef = _solv1_m(t, u, v, lat,fuv_cache=None, **compat_opts)
+    coef = _solv1_m(t, u, v, lat,fuv_cache=fuv_cache,**compat_opts)
 
     return coef
 
 
-def _solv1_m(tin, uin, vin, lat,fuv_cache=None, **opts):
+def _solv1_m(tin, uin, vin, lat,fuv_cache=None,freqs=None, **opts):
 
     # The following returns a possibly modified copy of tin (ndarray).
     # t, u, v are fully edited ndarrays (unless v is None).
@@ -589,11 +589,12 @@ def _solv1_m(tin, uin, vin, lat,fuv_cache=None, **opts):
         print("solve: ", end="")
 
     # opt['cnstit'] = cnstit
-    cnstit, coef = ut_cnstitsel(
+    cnstit, coef = ut_cnstitsel_m(
         tref,
         opt["rmin"] / (24 * lor),
         opt["cnstit"],
         opt["infer"],
+        freqs=freqs,
     )
 
     # a function we don't need
@@ -610,7 +611,7 @@ def _solv1_m(tin, uin, vin, lat,fuv_cache=None, **opts):
     E_args = (lat, ngflgs, opt.prefilt)
 
     # Make the model array, starting with the harmonics.
-    E = ut_E_m(t, tref, cnstit.NR.frq, cnstit.NR.lind,fuv_cache, *E_args)
+    E = ut_E_m(t, tref, cnstit.NR.frq, cnstit.NR.lind,fuv_cache=fuv_cache, *E_args)
 
     # Positive and negative frequencies
     B = np.hstack((E, E.conj()))
@@ -622,9 +623,9 @@ def _solv1_m(tin, uin, vin, lat,fuv_cache=None, **opts):
 
         if not opt.infer.approximate:
             for k, ref in enumerate(cnstit.R):
-                E = ut_E_m(t, tref, ref.frq, ref.lind,fuv_cache, *E_args)
+                E = ut_E_m(t, tref, ref.frq, ref.lind,fuv_cache=fuv_cache, *E_args)
                 # (nt,1)
-                Q = ut_E_m(t, tref, ref.I.frq, ref.I.lind,fuv_cache, *E_args) / E
+                Q = ut_E_m(t, tref, ref.I.frq, ref.I.lind,fuv_cache=fuv_cache, *E_args) / E
                 # (nt,ni)
                 Qsum_p = (Q * ref.I.Rp).sum(axis=1)
                 Etilp[:, k] = E[:, 0] * (1 + Qsum_p)
@@ -637,11 +638,11 @@ def _solv1_m(tin, uin, vin, lat,fuv_cache=None, **opts):
             beta = np.empty((coef.nR,), dtype=float)
 
             for k, ref in enumerate(cnstit.R):
-                E = ut_E_m(t, tref, ref.frq, ref.lind,fuv_cache, *E_args)[:, 0]
+                E = ut_E_m(t, tref, ref.frq, ref.lind,fuv_cache=fuv_cache, *E_args)[:, 0]
                 Etilp[:, k] = E
                 Etilm[:, k] = E
-                num = ut_E_m(tref, tref, ref.I.frq, ref.I.lind,fuv_cache, *E_args).real
-                den = ut_E_m(tref, tref, ref.frq, ref.lind,fuv_cache, *E_args).real
+                num = ut_E_m(tref, tref, ref.I.frq, ref.I.lind,fuv_cache=fuv_cache, *E_args).real
+                den = ut_E_m(tref, tref, ref.frq, ref.lind,fuv_cache=fuv_cache, *E_args).real
                 Q[k] = (num / den)[0, 0]
                 arg = np.pi * lor * 24 * (ref.I.frq - ref.frq) * (nt + 1) / nt
                 beta[k] = np.sin(arg) / arg
