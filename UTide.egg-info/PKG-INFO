@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: UTide
-Version: 0.1.dev1+g9427e74.d20241018
+Version: 0.1.dev4+g61c714e.d20241021
 Summary: Python distribution of the MatLab package UTide
 Home-page: https://github.com/wesleybowman/UTide
 Author: Wesley Bowman
@@ -49,6 +49,8 @@ UTide
 
 Python re-implementation of the Matlab package UTide.
 
+Calculates astronomy seperately from the solve harmonic analysis, so the function solve_m
+is more efficient for multiple time series with the same time vector.
 Still in heavy development--everything is subject to change!
 
 Note: the user interface differs from the Matlab version, so
