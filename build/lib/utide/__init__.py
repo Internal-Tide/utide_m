@@ -1,7 +1,7 @@
 import pkg_resources
 
 from ._reconstruct import reconstruct
-from ._solve import solve
+from ._solve import solve,solve_m
 from ._ut_constants import (
     constit_index_dict,
     cycles_per_hour,
