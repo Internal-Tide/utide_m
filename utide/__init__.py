@@ -17,6 +17,7 @@ except Exception:
 
 __all__ = [
     "solve",
+    "solve_m",
     "reconstruct",
     "ut_constants",
     "constit_index_dict",

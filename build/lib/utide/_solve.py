@@ -568,12 +568,12 @@ def _slvinit(tin, uin, vin, lat, **opts):
 #---------------------------------------------------------------------------------------------
 # modified solve function
 #---------------------------------------------------------------------------------------------
-def solve_m(t, u, v=None, lat=None, fuv_cache=None,**opts):
+def solve_m(t, u, v=None, lat=None, fuv_cache=None,freqs=None, **opts):
 
 
     compat_opts = _process_opts(opts, v is not None)
 
-    coef = _solv1_m(t, u, v, lat,fuv_cache=fuv_cache,**compat_opts)
+    coef = _solv1_m(t, u, v, lat,fuv_cache=fuv_cache,freqs=freqs,**compat_opts)
 
     return coef
 
