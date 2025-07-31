@@ -126,7 +126,7 @@ def ut_cnstitsel(tref, minres, incnstit, infer):
     return cnstit, coef
 
 
-def ut_cnstitsel_m(tref, minres, incnstit, infer,freqs=None):
+def ut_cnstitsel_m(tref, minres, incnstit, infer, freqs=None):
 
 
     const = ut_constants.const
@@ -134,7 +134,8 @@ def ut_cnstitsel_m(tref, minres, incnstit, infer,freqs=None):
     cnstit = Bunch()
     coef = Bunch()
 
-    # freqs = linearized_freqs(tref)
+    if freqs is None:
+        freqs = linearized_freqs(tref)
 
     # cnstit.NR
     cnstit["NR"] = Bunch()
