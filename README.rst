@@ -77,7 +77,35 @@ A sample call would be
                  conf_int='linear',
                  Rayleigh_min=0.95,)
 
+if use model data you can doing this to speed up the calculation  
 
+.. code:: python
+
+    from utide import solve_m
+
+def benchmark_solve(t, ssh, repeat=10):
+    out = None
+    for _ in range(repeat):
+        out = ut.solve(
+            t, ssh, lat=LATITUDE, method="ols", conf_int="none",
+            constit=CONSTITUENTS, order_constit="frequency",
+            trend=False, nodal=True, verbose=False
+        )
+    return out
+
+def benchmark_solve_m(t, ssh, out1, repeat=10):
+    F,U,V = FUV(_normalize_time(t, None), out1["aux"]["reftime"], out1["aux"]["lind"], 30.0, [1, 0, False, False])
+    fuv_cache = (F, U, V, out1["aux"]["lind"])
+    freqs = linearized_freqs(out1["aux"]["reftime"])
+    for _ in range(repeat):
+        out = ut.solve_m(
+            t, ssh, lat=LATITUDE, method="ols", conf_int="none",
+            constit=CONSTITUENTS, order_constit="frequency",
+            fuv_cache=fuv_cache, freqs=freqs,
+            trend=False, nodal=True, verbose=False
+        )
+    return out  
+    
 For more examples see the
 `notebooks <https://nbviewer.jupyter.org/github/wesleybowman/UTide/tree/master/notebooks/>`__
 folder.
