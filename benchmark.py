@@ -6,7 +6,7 @@ from utide.harmonics import FUV, linearized_freqs
 from utide._time_conversion import _normalize_time
 
 # 配置参数
-DATA_PATH = "../harmonic_test/h572a.nc"
+DATA_PATH = "/Users/tianzhiwei/code/harmonic_test/harmonic_test/h572a.nc"
 START_TIME = "2018-02-01 15:00:00"
 PERIODS = 8000
 FREQ = "h"
