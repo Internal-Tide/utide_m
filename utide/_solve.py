@@ -243,19 +243,37 @@ def _solve_multi(t, u, v, lat, **opts):
     if opts["RunTimeDisp"]:
         print(f"solve: multi-dimensional input detected ({orig_shape})")
 
-    # Use the first point to initialize (assuming same time/lat/etc.)
-    idx_good = 0
-    while idx_good < n_points and np.all(np.isnan(u_flat[:, idx_good])):
-        idx_good += 1
+    # Find a spatial point that is not all NaNs to use for initialization
+    is_all_nan = np.all(np.isnan(u_flat), axis=0)
+    if v_flat is not None:
+        is_all_nan &= np.all(np.isnan(v_flat), axis=0)
 
-    if idx_good == n_points:
+    if np.all(is_all_nan):
         raise ValueError("All spatial points are NaN.")
 
+    idx_good = np.where(~is_all_nan)[0][0]
     u0 = u_flat[:, idx_good]
     v0 = v_flat[:, idx_good] if v_flat is not None else None
 
+    # Initialize using the first good point
     packed = _slvinit(t, u0, v0, lat, **opts)
-    tin, t_clean, u0_clean, v0_clean, tref, lor, elor, opt = packed
+    tin_norm, t_clean, u0_clean, v0_clean, tref, lor, elor, opt = packed
+
+    # Apply same temporal masking to all spatial points
+    tin_all = _normalize_time(t, opts.get("epoch"))
+    good_time = ~np.isnan(tin_all)
+    u0_norm = u_flat[:, idx_good]
+    good_data = ~np.isnan(u0_norm)
+    if v_flat is not None:
+        v0_norm = v_flat[:, idx_good]
+        good_data &= ~np.isnan(v0_norm)
+    total_mask = good_time & good_data
+
+    u_flat = u_flat[total_mask, :]
+    if v_flat is not None:
+        v_flat = v_flat[total_mask, :]
+
+    nt_clean = len(t_clean)
 
     cnstit, coef = ut_cnstitsel(
         tref,
@@ -273,12 +291,9 @@ def _solve_multi(t, u, v, lat, **opts):
     B = np.hstack((E, E.conj()))
 
     if opt.infer is not None:
-        # Fallback to loop if inference is needed (less common for multi-dim)
-        if opt["RunTimeDisp"]:
-            print("Inference detected: falling back to loop for multi-dim.")
-        return _solve_loop(t, u, v, lat, opts)
+        raise NotImplementedError("Inference is not supported for multi-dimensional solve.")
 
-    B = np.hstack((B, np.ones((len(t_clean), 1))))
+    B = np.hstack((B, np.ones((nt_clean, 1))))
     if not opt["notrend"]:
         B = np.hstack((B, ((t_clean - tref) / lor)[:, np.newaxis]))
 
@@ -287,17 +302,24 @@ def _solve_multi(t, u, v, lat, **opts):
     else:
         xraw = u_flat
 
+    # Fill NaNs with 0 for the solver
+    xraw_filled = np.nan_to_num(xraw)
+
     if opt.newopts.method == "ols":
         if opt["RunTimeDisp"]:
             print(f"solution (vectorized {n_points} points) ... ", end="")
-        m = np.linalg.lstsq(B, xraw, rcond=None)[0]
+        m = np.linalg.lstsq(B, xraw_filled, rcond=None)[0]
     else:
         if opt["RunTimeDisp"]:
             print("solution (robust method loop) ... ", end="")
-        m = np.zeros((B.shape[1], n_points), dtype=xraw.dtype)
+        m = np.zeros((B.shape[1], n_points), dtype=xraw_filled.dtype)
         for i in range(n_points):
-            rf = robustfit(B, xraw[:, i], **opt.newopts.robust_kw)
+            if is_all_nan[i]:
+                continue
+            rf = robustfit(B, xraw_filled[:, i], **opt.newopts.robust_kw)
             m[:, i] = rf.b
+
+    m[:, is_all_nan] = np.nan
 
     nNR = coef.nNR
     ap = m[:nNR, :]
@@ -340,7 +362,7 @@ def _solve_multi(t, u, v, lat, **opts):
         coef["mean"] = mean.reshape(spatial_shape)
 
     if opt["conf_int"] and opt["RunTimeDisp"]:
-        print("\nWarning: Confidence intervals not supported for multi-dim.")
+        print("\nWarning: Confidence intervals not supported for multi-dimensional solve.")
 
     if opt["ordercnstit"] in ["PE", "SNR"]:
         if opt["RunTimeDisp"]:
@@ -351,28 +373,6 @@ def _solve_multi(t, u, v, lat, **opts):
     if opt["RunTimeDisp"]:
         print("done.")
     return coef
-
-
-def _solve_loop(t, u, v, lat, opts):
-    # Fallback to loop if needed
-    orig_shape = u.shape
-    nt = orig_shape[0]
-    spatial_shape = orig_shape[1:]
-    u_flat = u.reshape(nt, -1)
-    v_flat = v.reshape(nt, -1) if v is not None else None
-    n_points = u_flat.shape[1]
-
-    results = []
-    for i in range(n_points):
-        ui = u_flat[:, i]
-        vi = v_flat[:, i] if v_flat is not None else None
-        res = _solv1(t, ui, vi, lat, **opts)
-        results.append(res)
-
-    # Pack results back into a single Bunch (simplified)
-    # This part would need more work to be fully compatible with solve's output
-    # but for now we prioritize the vectorized path.
-    return results[0] # Placeholder
 
 
 def _reorder_multi(coef, opt, spatial_shape):
