@@ -1,7 +1,15 @@
-import pkg_resources
+try:
+    from importlib.metadata import version as get_version
+except ImportError:
+    # for python < 3.8
+    try:
+        from importlib_metadata import version as get_version
+    except ImportError:
+        def get_version(package):
+            return "unknown"
 
 from ._reconstruct import reconstruct
-from ._solve import solve,solve_m
+from ._solve import solve, solve_m
 from ._ut_constants import (
     constit_index_dict,
     cycles_per_hour,
@@ -11,7 +19,7 @@ from ._ut_constants import (
 
 
 try:
-    __version__ = pkg_resources.get_distribution("utide").version
+    __version__ = get_version("UTide")
 except Exception:
     __version__ = "unknown"
 

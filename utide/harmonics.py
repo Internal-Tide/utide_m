@@ -72,7 +72,7 @@ def ut_E(t, tref, frq, lind, lat, ngflgs, prefilt):
     else:
         F, U, V = FUV(t, tref, lind, lat, ngflgs)
 
-    E = F * np.exp(1j * (U + V) * 2 * np.pi)
+    E = F * np.exp(2j * np.pi * (U + V))
 
     # if ~isempty(prefilt)
     # if len(prefilt)!=0:
@@ -161,7 +161,7 @@ def ut_E_m(t, tref, frq, lind, lat, ngflgs, prefilt, fuv_cache=None):
                     "fuv_cache must be a tuple (F, U, V) or (F, U, V, lind_cache)"
                 )
 
-    E = F * np.exp(1j * (U + V) * 2 * np.pi)
+    E = F * np.exp(2j * np.pi * (U + V))
 
     return E
 
@@ -216,15 +216,13 @@ def FUV(t, tref, lind, lat, ngflgs):
         # sat.deldood is (162, 3); all other sat vars are (162,)
         uu = np.dot(sat.deldood, astro[3:6, :]) + sat.phcorr[:, None]
         np.fmod(uu, 1, out=uu)  # fmod is matlab rem; differs from % op
-        mat = rr[:, None] * np.exp(1j * 2 * np.pi * uu)
+        mat = rr[:, None] * np.exp(2j * np.pi * uu)
 
         nfreq = len(const.isat)  # 162
         F = np.ones((nfreq, ntt), dtype=complex)
 
         iconst = sat.iconst - 1
-        ind = np.unique(iconst)
-        for ii in ind:
-            F[ii, :] = 1 + np.sum(mat[iconst == ii], axis=0)
+        np.add.at(F, iconst, mat)
 
         U = np.angle(F) / (2 * np.pi)  # cycles
         F = np.abs(F)
